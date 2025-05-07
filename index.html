@@ -91,6 +91,33 @@
 
     <p id="result"></p>
   </div>
+<button id="installBtn" style="display:none; margin-top: 10px;">Install App</button>
+
+<script>
+  // Existing script...
+
+  let deferredPrompt;
+  const installBtn = document.getElementById('installBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'block';
+  });
+
+  installBtn.addEventListener('click', () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(choice => {
+        if (choice.outcome === 'accepted') {
+          console.log('User accepted install prompt');
+        }
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+      });
+    }
+  });
+</script>
 
   <script>
     let latestRates = {
