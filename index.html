@@ -1,17 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Converter</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#121212">
+  <meta name="theme-color" content="#121212" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #1e1e1e;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      width: 320px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: none;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+
+    input, select {
+      background-color: #2c2c2c;
+      color: #f0f0f0;
+    }
+
+    button {
+      background-color: #4a90e2;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #357ab8;
+    }
+
+    .flip-btn {
+      margin-top: -5px;
+      background-color: #555;
+      font-size: 14px;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: 400;
+    }
+  </style>
 </head>
 <body>
-  <h1>Smart Converter</h1>
+  <div class="container">
+    <h1>Smart Converter</h1>
+
+    <select id="converterType" onchange="updateLabels()">
+      <option value="length" selected>Length (Meters/Feet)</option>
+      <option value="temperature">Temperature (Fahrenheit/Celsius)</option>
+      <option value="currency">Currency (Live USD/EUR)</option>
+    </select>
+
+    <input type="number" id="inputValue" placeholder="Enter value" />
+
+    <select id="conversionType"></select>
+    <button class="flip-btn" onclick="flipDirection()">↔ Flip</button>
+
+    <button onclick="convert()">Convert</button>
+
+    <p id="result"></p>
+  </div>
+
   <script>
+    let latestRates = {
+      usdToEur: null,
+      eurToUsd: null,
+    };
+
+    async function fetchRates() {
+      try {
+        const res1 = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=EUR');
+        const res2 = await fetch('https://api.exchangerate.host/latest?base=EUR&symbols=USD');
+        const data1 = await res1.json();
+        const data2 = await res2.json();
+        latestRates.usdToEur = data1.rates.EUR;
+        latestRates.eurToUsd = data2.rates.USD;
+        console.log('Rates updated:', latestRates);
+      } catch (err) {
+        console.error('Rate fetch failed:', err);
+      }
+    }
+
+    function updateLabels() {
+      const type = document.getElementById('converterType').value;
+      const conversionType = document.getElementById('conversionType');
+      conversionType.innerHTML = '';
+
+      if (type === 'length') {
+        conversionType.innerHTML = `
+          <option value="metersToFeet">Meters to Feet</option>
+          <option value="feetToMeters">Feet to Meters</option>
+        `;
+      } else if (type === 'temperature') {
+        conversionType.innerHTML = `
+          <option value="fToC">Fahrenheit to Celsius</option>
+          <option value="cToF">Celsius to Fahrenheit</option>
+        `;
+      } else if (type === 'currency') {
+        conversionType.innerHTML = `
+          <option value="usdToEur">USD to EUR</option>
+          <option value="eurToUsd">EUR to USD</option>
+        `;
+      }
+    }
+
+    function flipDirection() {
+      const type = document.getElementById('converterType').value;
+      const conversionType = document.getElementById('conversionType');
+
+      if (type === 'length') {
+        conversionType.value = conversionType.value === 'metersToFeet' ? 'feetToMeters' : 'metersToFeet';
+      } else if (type === 'temperature') {
+        conversionType.value = conversionType.value === 'fToC' ? 'cToF' : 'fToC';
+      } else if (type === 'currency') {
+        conversionType.value = conversionType.value === 'usdToEur' ? 'eurToUsd' : 'usdToEur';
+      }
+    }
+
+    function formatNumber(num) {
+      return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
+    async function convert() {
+      const inputValue = parseFloat(document.getElementById('inputValue').value);
+      const conversionType = document.getElementById('conversionType').value;
+      const resultDisplay = document.getElementById('result');
+
+      if (isNaN(inputValue)) {
+        resultDisplay.innerText = 'Please enter a valid number.';
+        return;
+      }
+
+      let result;
+      switch (conversionType) {
+        case 'metersToFeet':
+          result = inputValue * 3.28084;
+          resultDisplay.innerText = `${formatNumber(inputValue)} Meters = ${formatNumber(result)} Feet`;
+          break;
+        case 'feetToMeters':
+          result = inputValue / 3.28084;
+          resultDisplay.innerText = `${formatNumber(inputValue)} Feet = ${formatNumber(result)} Meters`;
+          break;
+        case 'fToC':
+          result = (inputValue - 32) * 5 / 9;
+          resultDisplay.innerText = `${formatNumber(inputValue)} °F = ${formatNumber(result)} °C`;
+          break;
+        case 'cToF':
+          result = (inputValue * 9 / 5) + 32;
+          resultDisplay.innerText = `${formatNumber(inputValue)} °C = ${formatNumber(result)} °F`;
+          break;
+        case 'usdToEur':
+          if (!latestRates.usdToEur) {
+            resultDisplay.innerText = 'Rates not loaded. Please wait.';
+            return;
+          }
+          result = inputValue * latestRates.usdToEur;
+          resultDisplay.innerText = `$${formatNumber(inputValue)} = €${formatNumber(result)} (Rate: ${latestRates.usdToEur.toFixed(4)})`;
+          break;
+        case 'eurToUsd':
+          if (!latestRates.eurToUsd) {
+            resultDisplay.innerText = 'Rates not loaded. Please wait.';
+            return;
+          }
+          result = inputValue * latestRates.eurToUsd;
+          resultDisplay.innerText = `€${formatNumber(inputValue)} = $${formatNumber(result)} (Rate: ${latestRates.eurToUsd.toFixed(4)})`;
+          break;
+        default:
+          resultDisplay.innerText = 'Invalid conversion type.';
+      }
+    }
+
+    // Register service worker for PWA
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js").then(() => {
         console.log("Service Worker Registered");
       });
     }
+
+    // Initial setup
+    fetchRates();
+    updateLabels();
+    setInterval(fetchRates, 3600000); // hourly update
   </script>
 </body>
 </html>
